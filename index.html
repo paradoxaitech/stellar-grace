@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stellar Grace</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,700;1,400&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: 'Alegreya', serif;
+      overflow-x: hidden;
+      margin: 0;
+      background: radial-gradient(ellipse at center, #0a0a1a, #000000);
+    }
+
+    /* ── Canvas ── */
+    #bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ── Interactive star layer ── */
+    #interactive-stars {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+    }
+    .star {
+      position: absolute;
+      border-radius: 50%;
+      background: white;
+      animation: twinkle var(--dur) ease-in-out infinite alternate;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .star:hover {
+      transform: scale(3);
+      box-shadow: 0 0 20px 5px rgba(200, 220, 255, 0.8);
+    }
+    .star.burst {
+      animation: burstAnim 0.6s ease-out forwards;
+    }
+    @keyframes twinkle {
+      0%   { opacity: 0.2; }
+      100% { opacity: 1;   }
+    }
+    @keyframes burstAnim {
+      0%   { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,255,255,0.8); }
+      50%  { transform: scale(5); box-shadow: 0 0 40px 15px rgba(150,180,255,0.6); }
+      100% { transform: scale(1); box-shadow: 0 0 0 0 transparent; }
+    }
+    @keyframes drift {
+      0%   { transform: translateX(0)   translateY(0);    }
+      50%  { transform: translateX(30px) translateY(-20px); }
+      100% { transform: translateX(0)   translateY(0);    }
+    }
+    @keyframes shootingStar {
+      0%   { transform: translateX(0)    translateY(0);    opacity: 1; }
+      100% { transform: translateX(600px) translateY(600px); opacity: 0; }
+    }
+
+    /* ── Nebula clouds ── */
+    .nebula-cloud {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(60px);
+      opacity: 0.3;
+      animation: drift 20s ease-in-out infinite;
+      transition: opacity 0.4s ease, filter 0.4s ease, background 0.6s ease;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* ── Shooting star ── */
+    .shooting-star {
+      position: fixed;
+      width: 2px;
+      height: 2px;
+      background: white;
+      border-radius: 50%;
+      box-shadow: 0 0 6px 2px white, -30px 0 12px 2px rgba(255,255,255,0.25);
+      animation: shootingStar 1.5s linear forwards;
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    /* ── Ripple on click ── */
+    .ripple {
+      position: fixed;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(180,160,255,0.35), transparent 70%);
+      transform: scale(0);
+      animation: rippleOut 1s ease-out forwards;
+      pointer-events: none;
+      z-index: 5;
+    }
+    @keyframes rippleOut {
+      0%   { transform: scale(0);   opacity: 1; }
+      100% { transform: scale(1);   opacity: 0; }
+    }
+
+    /* ── Content ── */
+    .poem-line {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.8s ease, transform 0.8s ease;
+    }
+    .poem-line.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .galaxy-img {
+      mask-image: radial-gradient(ellipse at center, black 40%, transparent 70%);
+      -webkit-mask-image: radial-gradient(ellipse at center, black 40%, transparent 70%);
+    }
+    main { position: relative; z-index: 10; }
+  </style>
+</head>
+<body>
+
+<!-- Deep-star canvas (WebGL-style, pure JS) -->
+<canvas id="bg-canvas"></canvas>
+
+<!-- Interactive star layer -->
+<div id="interactive-stars"></div>
+
+<!-- Nebula clouds — now fixed so they stay in view while scrolling -->
+<div class="nebula-cloud" id="neb1" style="width:520px;height:520px;background:radial-gradient(circle,rgba(100,50,200,0.5),transparent);top:8%;left:-6%;animation-delay:0s;"></div>
+<div class="nebula-cloud" id="neb2" style="width:420px;height:420px;background:radial-gradient(circle,rgba(20,100,180,0.45),transparent);top:38%;right:-8%;animation-delay:-7s;"></div>
+<div class="nebula-cloud" id="neb3" style="width:600px;height:600px;background:radial-gradient(circle,rgba(180,50,100,0.3),transparent);bottom:4%;left:18%;animation-delay:-13s;"></div>
+
+<main>
+  <!-- Hero -->
+  <section class="flex items-center justify-center" style="min-height:100vh;">
+    <div class="text-center px-4">
+      <h1 class="text-5xl md:text-7xl font-bold mb-4"
+          style="text-shadow: rgba(200,180,255,0.5) 0px 0px 40px; color: rgb(224,212,245); font-family:'Playfair Display',serif;">
+        Stellar Grace
+      </h1>
+      <p class="text-xl md:text-2xl opacity-80"
+         style="color:rgb(184,169,212); font-weight:400; font-style:italic;">
+        A cosmic meditation on transformation
+      </p>
+    </div>
+  </section>
+
+  <!-- Galaxy image -->
+  <section class="flex justify-center py-16 px-4">
+    <img class="galaxy-img w-full max-w-2xl rounded-full opacity-70" loading="lazy"
+         src="https://images.pexels.com/photos/2150/sky-space-dark-galaxy.jpg?auto=compress&cs=tinysrgb&w=1280"
+         alt="NGC 1672 spiral galaxy">
+  </section>
+
+  <!-- Poem -->
+  <section class="max-w-3xl mx-auto px-6 py-20" id="poem-section">
+    <div class="backdrop-blur-sm bg-black/30 rounded-2xl p-8 md:p-12 border border-white/10 shadow-2xl">
+      <div id="poem-container" class="space-y-4 text-center"></div>
+    </div>
+  </section>
+
+  <!-- Nebula image -->
+  <section class="flex justify-center py-16 px-4">
+    <img class="galaxy-img w-full max-w-3xl rounded-3xl opacity-60" loading="lazy"
+         src="https://images.pexels.com/photos/956981/milky-way-starry-sky-night-sky-star-956981.jpeg?auto=compress&cs=tinysrgb&w=1920"
+         alt="Milky Way starry night">
+  </section>
+
+  <!-- Footer -->
+  <footer class="text-center py-20 px-4">
+    <p class="text-lg opacity-60" style="color:rgb(122,107,138); font-style:italic;">✦ The universe remembers ✦</p>
+  </footer>
+</main>
+
+<script>
+// ── Poem ─────────────────────────────────────────────────────────────────────
+const poem = [
+  "Through heavy cosmic dust and freezing dark,",
+  "The stubborn ember held its quiet spark.",
+  "An ancient, aching weight was borne so long,",
+  "Transmuting every scar into a song.",
+  "",
+  "Now spinning wheels of light begin to trace",
+  "The long-awaited debt of stellar grace.",
+  "A blind and breathless faith within the chest",
+  "Has turned the gravity to peaceful rest,",
+  "",
+  "An inner beauty, fierce and undisturbed,",
+  "By all the chaos of the world unperturbed.",
+  "It honors every golden, vanished day,",
+  "And sweeps the heavy, stagnant ash away.",
+  "",
+  "Where scorpions once struck with venom cold,",
+  "Pure virgins of the spirit now unfold,",
+  "Ascending to a high, celestial space",
+  "To dance amid the frequencies of grace.",
+  "",
+  "The universe remembers what was paid,",
+  "And out of hardship, stellar bliss is made."
+]
+
+const container = document.getElementById('poem-container')
+poem.forEach(line => {
+  const p = document.createElement('p')
+  p.className = 'poem-line text-lg md:text-xl leading-relaxed'
+  p.style.color = '#e8dff0'
+  p.style.fontFamily = "'Alegreya', serif"
+  if (line === '') {
+    p.innerHTML = '&nbsp;'
+    p.style.height = '1rem'
+  } else {
+    p.textContent = line
+  }
+  container.appendChild(p)
+})
+
+const poemObserver = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible') })
+}, { threshold: 0.3 })
+document.querySelectorAll('.poem-line').forEach(l => poemObserver.observe(l))
+
+// ── Background canvas: slow drifting star-field ───────────────────────────
+const canvas = document.getElementById('bg-canvas')
+const ctx = canvas.getContext('2d')
+let W, H, bgStars = []
+
+function resizeCanvas() {
+  W = canvas.width  = window.innerWidth
+  H = canvas.height = window.innerHeight
+}
+resizeCanvas()
+window.addEventListener('resize', () => { resizeCanvas(); buildBgStars() })
+
+function buildBgStars() {
+  bgStars = []
+  const count = Math.floor((W * H) / 2000)
+  for (let i = 0; i < count; i++) {
+    bgStars.push({
+      x: Math.random() * W, y: Math.random() * H,
+      r: Math.random() * 1.2 + 0.3,
+      alpha: Math.random(),
+      speed: Math.random() * 0.3 + 0.05,
+      phase: Math.random() * Math.PI * 2,
+      vx: (Math.random() - 0.5) * 0.08,
+      vy: (Math.random() - 0.5) * 0.08,
+    })
+  }
+}
+buildBgStars()
+
+let lastTime = 0
+function drawBg(ts) {
+  const dt = ts - lastTime; lastTime = ts
+  ctx.clearRect(0, 0, W, H)
+  const t = ts / 1000
+  bgStars.forEach(s => {
+    s.x += s.vx; s.y += s.vy
+    if (s.x < 0) s.x = W; if (s.x > W) s.x = 0
+    if (s.y < 0) s.y = H; if (s.y > H) s.y = 0
+    const pulse = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(t * s.speed + s.phase))
+    ctx.beginPath()
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2)
+    ctx.fillStyle = `rgba(255,255,255,${(pulse * 0.8).toFixed(2)})`
+    ctx.fill()
+  })
+  requestAnimationFrame(drawBg)
+}
+requestAnimationFrame(drawBg)
+
+// ── Interactive foreground stars ──────────────────────────────────────────
+function createInteractiveStars() {
+  const layer = document.getElementById('interactive-stars')
+  layer.innerHTML = ''
+  const count = Math.min(80, Math.floor(W * H / 12000))
+  for (let i = 0; i < count; i++) {
+    const s = document.createElement('div')
+    s.className = 'star'
+    const size = Math.random() * 3 + 1
+    s.style.width  = size + 'px'
+    s.style.height = size + 'px'
+    s.style.left = Math.random() * 100 + '%'
+    s.style.top  = Math.random() * 100 + '%'
+    s.style.setProperty('--dur', (Math.random() * 3 + 1) + 's')
+    s.style.animationDelay = (Math.random() * 5) + 's'
+    s.addEventListener('click', () => {
+      s.classList.remove('burst')
+      void s.offsetWidth
+      s.classList.add('burst')
+      setTimeout(() => s.classList.remove('burst'), 600)
+    })
+    layer.appendChild(s)
+  }
+}
+createInteractiveStars()
+window.addEventListener('resize', createInteractiveStars)
+
+// ── Parallax on mouse ────────────────────────────────────────────────────
+let mouseX = 0, mouseY = 0
+document.addEventListener('mousemove', e => {
+  mouseX = e.clientX; mouseY = e.clientY
+  const x = (e.clientX / W - 0.5) * 14
+  const y = (e.clientY / H - 0.5) * 14
+  document.getElementById('interactive-stars').style.transform = `translate(${x}px,${y}px)`
+
+  // Nebulas follow mouse subtly at different speeds
+  const nx = (e.clientX / W - 0.5)
+  const ny = (e.clientY / H - 0.5)
+  document.getElementById('neb1').style.transform = `translate(${nx*30}px,${ny*20}px)`
+  document.getElementById('neb2').style.transform = `translate(${nx*-20}px,${ny*30}px)`
+  document.getElementById('neb3').style.transform = `translate(${nx*25}px,${ny*-15}px)`
+})
+
+// ── Click anywhere: ripple + burst nearby stars + shift nebula color ─────
+const NEBULA_PALETTES = [
+  ['rgba(100,50,200,0.65)','rgba(20,100,180,0.5)','rgba(180,50,100,0.4)'],
+  ['rgba(200,80,50,0.55)', 'rgba(50,180,150,0.5)','rgba(100,50,220,0.4)'],
+  ['rgba(60,120,220,0.6)', 'rgba(180,60,160,0.5)','rgba(220,160,40,0.35)'],
+  ['rgba(150,40,180,0.6)', 'rgba(40,160,200,0.5)','rgba(200,100,50,0.35)'],
+]
+let paletteIdx = 0
+
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('star')) return
+
+  // Ripple
+  const ripple = document.createElement('div')
+  ripple.className = 'ripple'
+  const size = 300
+  ripple.style.width  = size + 'px'
+  ripple.style.height = size + 'px'
+  ripple.style.left   = (e.clientX - size / 2) + 'px'
+  ripple.style.top    = (e.clientY - size / 2) + 'px'
+  document.body.appendChild(ripple)
+  setTimeout(() => ripple.remove(), 1000)
+
+  // Burst nearby interactive stars
+  const stars = document.querySelectorAll('.star')
+  stars.forEach(s => {
+    const r = s.getBoundingClientRect()
+    const cx = r.left + r.width / 2
+    const cy = r.top  + r.height / 2
+    const dist = Math.hypot(cx - e.clientX, cy - e.clientY)
+    if (dist < 150) {
+      s.classList.remove('burst')
+      void s.offsetWidth
+      s.classList.add('burst')
+      setTimeout(() => s.classList.remove('burst'), 600)
+    }
+  })
+
+  // Cycle nebula palette
+  paletteIdx = (paletteIdx + 1) % NEBULA_PALETTES.length
+  const pal = NEBULA_PALETTES[paletteIdx]
+  document.getElementById('neb1').style.background = `radial-gradient(circle,${pal[0]},transparent)`
+  document.getElementById('neb2').style.background = `radial-gradient(circle,${pal[1]},transparent)`
+  document.getElementById('neb3').style.background = `radial-gradient(circle,${pal[2]},transparent)`
+
+  // Splash a few canvas sparks at click point
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2
+    const speed = Math.random() * 3 + 1
+    const spark = { x: e.clientX, y: e.clientY,
+      vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+      life: 1, r: Math.random() * 2 + 1 }
+    sparks.push(spark)
+  }
+})
+
+// ── Canvas sparks (click-spawned) ────────────────────────────────────────
+const sparks = []
+function drawSparks() {
+  // Sparks are drawn on top in a separate pass inside the main loop
+}
+
+// Patch the main loop to also draw sparks
+const _origDraw = drawBg
+;(function patchLoop() {
+  // We'll draw sparks directly in rAF after clearing
+  // Re-implement loop with sparks
+  let running = true
+  function loop(ts) {
+    if (!running) return
+    const t = ts / 1000
+    ctx.clearRect(0, 0, W, H)
+
+    // Background stars
+    bgStars.forEach(s => {
+      s.x += s.vx; s.y += s.vy
+      if (s.x < 0) s.x = W; if (s.x > W) s.x = 0
+      if (s.y < 0) s.y = H; if (s.y > H) s.y = 0
+      const pulse = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(t * s.speed + s.phase))
+      ctx.beginPath()
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(255,255,255,${(pulse * 0.8).toFixed(2)})`
+      ctx.fill()
+    })
+
+    // Sparks
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      const sp = sparks[i]
+      sp.x += sp.vx; sp.y += sp.vy
+      sp.vy += 0.05
+      sp.life -= 0.025
+      if (sp.life <= 0) { sparks.splice(i, 1); continue }
+      ctx.beginPath()
+      ctx.arc(sp.x, sp.y, sp.r * sp.life, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(200,180,255,${sp.life.toFixed(2)})`
+      ctx.fill()
+    }
+
+    requestAnimationFrame(loop)
+  }
+  // Cancel the first loop we started and start the new one
+  requestAnimationFrame(loop)
+})()
+
+// ── Shooting stars ───────────────────────────────────────────────────────
+function spawnShootingStar() {
+  const el = document.createElement('div')
+  el.className = 'shooting-star'
+  el.style.left = Math.random() * 70 + '%'
+  el.style.top  = Math.random() * 35 + '%'
+  document.body.appendChild(el)
+  setTimeout(() => el.remove(), 1500)
+}
+setInterval(spawnShootingStar, 4500)
+// Spawn one immediately
+setTimeout(spawnShootingStar, 800)
+</script>
+</body>
+</html>
